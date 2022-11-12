@@ -6,6 +6,15 @@ app = Flask(__name__)
 
 mysql = MySQL(app)
 
+def check_registry(id):
+    cursor = mysql.connection
+    cur = cursor.cursor()
+    sql = "SELECT id, name, credits FROM ` courses` WHERE id = '{0}'".format(id) 
+    cur.execute(sql)
+    data = cur.fetchall()
+    if len(data) > 0: return True
+    else: return False
+
 def get_query(id=None,method="GET"):
     try:
         cursor = mysql.connection
@@ -29,6 +38,12 @@ def get_query(id=None,method="GET"):
             cur.execute(sql)
             cur.connection.commit()
             return jsonify({'message':"Success"})
+        elif id != None and method == "PUT":
+            sql = """UPDATE ` courses` SET `credits` = '{0}', `name` = '{1}' WHERE ` courses`.`id` = {2};
+            """.format(request.json['credits'],request.json['name'],id)
+            cur.execute(sql)
+            cur.connection.commit()
+            return jsonify({'message':"Success"})
         
         if len(data) > 0: return jsonify({'courses':data,'message':'Success'})
         else: return jsonify({'message':"Course/s not found"})
@@ -41,7 +56,8 @@ def index():
 
 @app.route('/', methods=['POST'])
 def set_course():
-    return get_query(method="POST")
+    if check_registry(format(request.json['id'])) == False: return get_query(method="POST")
+    else: return jsonify({'message':"ID already exists"})
 
 @app.route('/<id>', methods=['GET'])
 def get_course(id):
@@ -49,7 +65,13 @@ def get_course(id):
 
 @app.route('/<id>', methods=['DELETE'])
 def del_course(id):
-    return get_query(id,method="DELETE")
+    if check_registry(id) == True: return get_query(id,method="DELETE")
+    else: return jsonify({'message':"ID do not exists"})
+
+@app.route('/<id>', methods=['PUT'])
+def update_course(id):
+    if check_registry(id) == True: return get_query(id,method="PUT")
+    else: return jsonify({'message':"ID do not exists"})
 
 def not_found(error):
     return "<h1>Page not found!</h1>"
